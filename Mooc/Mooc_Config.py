@@ -28,17 +28,18 @@ echo 请用Potplayer播放器打开“{1}”观看视频（未安装Potplayer自
 pause
 '''.format(PALYBACK, PLAYLIST)
 LENGTH = 80
+# aria2c的请求头，如果不加请求头服务器会拒绝连接
+USERAGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36'
 
 # 变量，可修改的参数
-download_speed = "8192K"
 if getattr(sys, 'frozen', False): #是否打包
     aria2_path = os.path.join(sys._MEIPASS, "aria2c.exe")
     alipay_path = os.path.join(sys._MEIPASS, "Alipay.jpg")
 else:
     aria2_path = os.path.join(PATH, "aria2c.exe")
     alipay_path = os.path.join(PATH, "Alipay.jpg")
-aira2_cmd = '%s -x 16 -s 64 -j 64 -k 2M --disk-cache 128M --max-overall-download-limit %s "{url:}" -d "{dirname:}" -o "{filename:}"'%(aria2_path, download_speed)
-# aira2_cmd = '%s -x 16 -s 64 -j 64 -k 2M --disk-cache 128M --max-overall-download-limit %s "{url:}" -d "{dirname:}" -o "{filename:}"'%(aria2_path, download_speed)
+aira2_cmd = '%s -x 16 -s 64 -j 64 -k 2M --disk-cache 128M "{url:}" -d "{dirname:}" -o "{filename:}"'%(aria2_path)
+aira2_download_from_file = '%s -x 16 -s 64 -j 64 -k 2M --disk-cache 128M --user-agent=%s --input-file="{fileName:}"' % (aria2_path, USERAGENT)
 
 # 课程链接的正则匹配
 courses_re = {
@@ -52,5 +53,5 @@ __all__ = [
     "__QQgroup__", "__email__", "PATH", "winre", "TIMEOUT", "PLAYLIST", "PALYBACK", 
     "BATNAME", "BATSTRING", "LENGTH", "WIN_LENGTH", 
 
-    "download_speed", "aria2_path", "aira2_cmd", "courses_re", "alipay_path"
+    "aria2_path", "aira2_cmd", "aira2_download_from_file", "courses_re", "alipay_path"
 ]

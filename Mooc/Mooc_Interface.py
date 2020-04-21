@@ -91,7 +91,10 @@ def mooc_interface():
                     return
     except KeyboardInterrupt:
         input("程序退出...")
-    os.system("pause")
+    finally:
+        if (input("\n看在我这么辛苦敲代码的份上，打个赏再走呗 …(⊙_⊙)… [y/n]: ") != 'n'):
+            os.startfile(alipay_path)
+        os.system("pause")
 
 def inquire():
     redown = None

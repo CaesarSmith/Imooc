@@ -151,9 +151,9 @@ class Icourse163_Mooc(Icourse163_Base):
         for videoItem in videos:
             if videoItem.get('quality') == self.mode:
                 video_url = videoItem.get('videoUrl')
-                # video_size = videoItem.get('size')
+                video_size = videoItem.get('size')
         
-        return video_url, sub_url
+        return video_url, sub_url, video_size
 
     def _get_video_url(self, params):
         text = self._get_source_text(params)
@@ -200,10 +200,10 @@ class Icourse163_Mooc(Icourse163_Base):
                     video_name = sub_name = name
                     video_url, sub_url = self._get_video_url(params)
                     if not (video_url):
-                        video_url, sub_url = self._get_video_url_new(params)
+                        video_url, sub_url, video_size = self._get_video_url_new(params)
 
                     if video_url:
-                        self.download_video(video_url=video_url, video_name=video_name, video_dir=lessonDir)
+                        self.download_video(video_url=video_url, video_name=video_name, video_dir=lessonDir, video_size=(video_size or None))
                     if sub_url:
                         self.download_sub(sub_url, sub_name, lessonDir)
 

@@ -11,7 +11,7 @@ from urllib.error import ContentTooShortError, URLError, HTTPError
 from Mooc.Mooc_Config import *
 
 __all__ = [
-    'RequestFailed', 'request_get', 'request_get_bytes', 'request_post', 'request_head', 'request_cookies', 'request_check'
+    'RequestFailed', 'request_get', 'request_post', 'request_head', 'request_cookies', 'request_check'
 ]
 
 headers = ("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/75.0.3770.100 Safari/537.36")  # 这里模拟浏览器
@@ -56,16 +56,6 @@ def request_get(url, decoding='utf8'):
     text = response.read().decode(decoding)
     response.close()
     return text
-
-@request_decorate()
-def request_get_bytes(url):
-    '''get请求'''
-    req = request.Request(url=url)
-    response = request.urlopen(req, timeout=TIMEOUT)
-    text = response.read()
-    response.close()
-    return text
-
 
 @request_decorate()
 def request_post(url, data, decoding='utf8'):
