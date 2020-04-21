@@ -9,11 +9,7 @@ from Mooc.Mooc_Download import *
 from Mooc.Mooc_Request import *
 import m3u8
 from urllib.parse import urljoin
-from threading import Thread
-from queue import Queue
-import re
-import subprocess
-import time
+from shutil import rmtree
 
 __all__ = [
     "Mooc_Base"
@@ -100,12 +96,12 @@ class Mooc_Base(ABC):
         pass
 
     @classmethod
-    def download_video(cls, video_url, video_name, video_dir):
+    def download_video(cls, video_url, video_name, video_dir, video_size=None):
         '''下载 MP4 视频文件'''
         succeed = True
         if not cls.judge_file_existed(video_dir, video_name, '.mp4'):
             if 'm3u8' in video_url:
-                succeed = cls.download_m3u8_video(video_url, video_name, video_dir)
+                cls.download_m3u8_video(video_url, video_name, video_dir, video_size=video_size)
                 print("\r  |-{}  [mp4]下载完成".format(cls.align(video_name,LENGTH)))
             else:
                 try:
@@ -121,107 +117,35 @@ class Mooc_Base(ABC):
         return succeed
     
     @classmethod
-    def download_m3u8_video(cls, video_url, video_name, video_dir):
+    def download_m3u8_video(cls, video_url, video_name, video_dir, video_size=None):
         tmpdir = os.path.join(video_dir, 'tmp')
+        tsURLsFile = 'ts.txt'
+        
         succeed = True
+
         if not (os.path.exists(tmpdir)):
             os.mkdir(tmpdir)
-
         os.chdir(tmpdir)
         
         m3u8Str = request_get(video_url)
         m3u8_obj = m3u8.loads(m3u8Str)
         
-        urls = []
-        for ts in m3u8_obj.files:
-            urls.append(urljoin(video_url, ts))
-
-        def consumer(threadID, queque, urls):
-            length = len(urls)
-            while True:
-                url = queue.get()
-                urlindex = urls.index(url)
-                print('\r    子线程 %2d 正在下载第%2d/%2d个视频片段' % (threadID, urlindex + 1, length), end = '')         
-                content = request_get_bytes(url)
-                
-                tsName = re.search('.+/(.+\.ts)', url).group(1)
-                with open(tsName, 'wb') as f:
-                    f.write(content)
-                    f.close()
-
-                queue.task_done()
-
-        def producer(queue, urls):
-            length = len(urls)
-            read_list = []
-            while queue.full() is False:
-                for i in range(length):
-                    if urls[i] not in read_list:
-                        read_list.append(urls[i])
-                        queue.put(urls[i])
-                    else:
-                        continue
+        with open(tsURLsFile, 'w') as f:
+            for url in m3u8_obj.files:
+                # m3u8文件获取各个ts流的真正下载地址，它实际是m3u8文件的url更改路径得到的
+                f.write(urljoin(video_url, url) + '\n')
+            f.close()
         
         try:
-            #aria2_download_file(urljoin(video_url, ts), ts)
-            #用requests下载
-            threadTotalNumber = 20
-            queue = Queue(maxsize=threadTotalNumber)
-            # lock = Lock()
-
-            # 生产者队列，用于将各章节标题与URL放入队列供消费者爬取
-            producer_thread = Thread(target=producer, args=(queue, urls))
-            producer_thread.daemon = True
-            producer_thread.start()
-
-            for index in range(threadTotalNumber):
-                consumer_thread = Thread(
-                    target=consumer, args=(index, queue, urls))
-                consumer_thread.daemon = True
-                consumer_thread.start()
-
-            queue.join()
-
-            # 合并ts文件
-            print('\r                     正在合并文件                   ', end='')
-            files = m3u8_obj.files
-            shell_cmds = []
-            if len(files) < 100:
-                filestr = ''
-                for file in files:
-                    filestr += file + '+'
-                shell_cmds.append('copy /b ' + filestr[:-1] + ' "..\\' + video_name + '.mp4"')
-            else:
-                i = 0
-                while i <= len(files) // 100:
-                    filestr = ''
-                    for file in files[i * 100: (i + 1) * 100]:
-                        filestr += file + '+'
-                    shell_cmds.append('copy /b ' + filestr[:-1] + ' "..\\' + video_name + '_part' + str(i) +'.mp4"')
-                    i += 1
-            for shell in shell_cmds:
-                p = subprocess.run(shell, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout = 3)
-                if p.returncode != 0:
-                    print('\n', p.stdout.decode('gbk'))
-                    print('合并文件失败, 请联系作者:')
-                    os.system('pause')
-                
-            # 删除ts文件及临时文件夹
-            for file in m3u8_obj.files:
-                if os.path.exists(file):
-                    os.remove(file)
-            os.chdir('..')
-            os.rmdir(tmpdir)
- 
-        
+            print("  |-{}  [mp4] 大小: {:.2f}M".format(cls.align(video_name,LENGTH), video_size / (1024*1024) ))
+            aria2_download_m3u8_video(video_name, video_dir, tsURLsFile, video_size)
+            # 一定要记得先跳出tmp目录再删除，否则无法删除！！！
+            os.chdir(video_dir)
+            rmtree(tmpdir)
         except DownloadFailed:
             print("  |-{}  [mp4] 资源无法下载！".format(cls.align(video_name,LENGTH)))
             succeed = False
         return succeed
-    
-
-
-
 
     @classmethod
     def download_pdf(cls, pdf_url, pdf_name, pdf_dir):
