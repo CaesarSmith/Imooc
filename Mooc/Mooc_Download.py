@@ -84,7 +84,7 @@ def aria2_download_m3u8_video(video_name, video_dir, urlsFile, size=None):
                     per = min(int(LENGTH*percent/100) , LENGTH)
                     print('\r  |-[' + per * '*' + (LENGTH - per) * '.' + '] {:.0f}% {:.2f}M/s'.format(percent, speed), end=' (ctrl+c中断)')
                 else:
-                    p.stdout.readlines()
+                    p.stdout.read()
             if p.returncode != 0:
                 cnt += 1
                 if cnt==1:
@@ -116,7 +116,7 @@ def clear_ts():
 
 def merge_ts(video_name, video_dir, urlsFile):
     f = open(urlsFile, 'r')
-    files = [re.search('.+/(.+\.ts)', file.strip()).group(1) for file in f.readlines()]
+    files = [re.search('.+/(.+\.ts)', file.strip()).group(1) for file in f.readlines() if not(file.startswith('  '))]
     f.close()
 
     #先将视频片段合并为稍大一点的文件，
@@ -128,7 +128,10 @@ def merge_ts(video_name, video_dir, urlsFile):
             shellStr += file + '+'
 
         cmd = 'copy /b ' + shellStr[:-1] + ' part_' + str(i)
-        execute_cmd(cmd)
+        try:
+            execute_cmd(cmd)
+        except Exception as e:
+            print(e)
         video_parts.append('part_' + str(i))
     
     shellStr = ''
@@ -136,8 +139,11 @@ def merge_ts(video_name, video_dir, urlsFile):
         shellStr += part + '+'
     
     cmd = 'copy /b ' + shellStr[:-1] + ' "' + os.path.join(video_dir, video_name) + '".mp4'
-    execute_cmd(cmd)
-    return
+    try:
+        execute_cmd(cmd)
+    except Exception as e:
+        print(e)
+    return True
 
 
 def execute_cmd(cmd):
@@ -145,18 +151,26 @@ def execute_cmd(cmd):
     while cnt < 3:
         try:
             p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
-
+            lines = ''
             while p.poll() is None:
                 line = p.stdout.readline()
+                try:
+                    lines += line.decode('gbk')
+                except Exception:
+                    lines += line
 
             if p.returncode != 0:
-                print('命令执行失败,返回码:', p.returncode, '尝试第%d次' % (cnt + 1))
-                print(stdout)
+                print('\n命令执行失败,返回码:', p.returncode, '尝试第%d次' % (cnt + 1))
+                line = p.stdout.read()
+                try:
+                    lines += line.decode('gbk')
+                except Exception:
+                    lines += line
+                print(lines)
                 cnt += 1
             return
         except Exception as e:
             print(e)
-            return
         finally:
             p.kill()  # 保证子进程已终止
               
